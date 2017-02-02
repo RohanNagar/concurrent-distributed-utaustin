@@ -1,35 +1,43 @@
-//UT-EID=
-
+// UT-EID: ran679, kmg2969
 
 import java.util.*;
 import java.util.concurrent.*;
 
-public class PSort{
-	static int[] A2 = {1,25,3,17,19,6,16};
-  public static void parallelSort(int[] A, int begin, int end){
-	 ExecutorService es = Executors.newSingleThreadExecutor();
-	  
+public class PSort {
+
+  public static void parallelSort(int[] A, int begin, int end) {
+    ExecutorService es = Executors.newSingleThreadExecutor();
+
+    QuickSort sort = new QuickSort(A, begin, end);
+    Future future = es.submit(sort);
+    while (!future.isDone());
+
+    es.shutdown();
+    sort.threadPool.shutdown();
   }
-  private static class QuickSort implements Runnable{
+  private static class QuickSort implements Runnable {
 	  public static ExecutorService threadPool = Executors.newCachedThreadPool();
-	  int begin;
-	  int end;
-	  static int[] A;
-	  int n;
-	  QuickSort(int[] A, int begin, int end){
+
+	  private int begin;
+	  private int end;
+	  private static int[] A;
+	  private int n;
+
+	  QuickSort(int[] A, int begin, int end) {
 		  this.begin = begin;
 		  this.end = end;
 		  this.A = A;
 		  this.n = begin - end;
 	  }
-	  public void run(){
-		  if(n <= 4){
+
+	  public void run() {
+		  if(n <= 4) {
 			  int [] subA = Arrays.copyOfRange(A, begin, end);
 			  Arrays.sort(subA);
-			  for(int i = begin; i < end; i++){
+			  for(int i = begin; i < end; i++) {
 				  A[i] = subA[i];
 			  }
-		  }else{
+		  } else {
 			  int pivot = A[begin];
 			  int open = begin + 1;
 			  boolean openGreat = false;

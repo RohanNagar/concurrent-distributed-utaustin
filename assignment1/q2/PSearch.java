@@ -1,4 +1,4 @@
-//UT-EID=
+// UT-EID: ran679, kmg2969
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -36,7 +36,7 @@ public class PSearch {
     }
 
     executorService.shutdown();
-    return index; // if not found
+    return index;
   }
 
   private static class Searcher implements Callable<Integer> {

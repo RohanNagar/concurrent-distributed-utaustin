@@ -5,24 +5,45 @@ import java.util.concurrent.*;
 
 public class PSort {
 
+  /**
+   * Performs a sort on the given array in parallel.
+   *
+   * @param A The array to sort
+   * @param begin The index to begin sorting at
+   * @param end The index to stop sorting at
+   */
   public static void parallelSort(int[] A, int begin, int end) {
     ExecutorService es = Executors.newSingleThreadExecutor();
 
+    // Create the initial thread
     QuickSort sort = new QuickSort(A, begin, end);
     Future future = es.submit(sort);
-    while (!future.isDone());
+    while (!future.isDone()); // Wait for QuickSort to finish
 
+    // Shutdown
     es.shutdown();
     sort.threadPool.shutdown();
   }
+
+  /**
+   * A class to perform the QuickSort algorithm.
+   */
   private static class QuickSort implements Runnable {
 	  public static ExecutorService threadPool = Executors.newCachedThreadPool();
 
-	  private int begin;
-	  private int end;
-	  private static int[] A;
-	  private int n;
+    private static int[] A;
 
+	  private final int begin;
+	  private final int end;
+	  private final int n;
+
+    /**
+     * Constructs a new QuickSort object.
+     *
+     * @param A The array to sort
+     * @param begin The index to start sorting at
+     * @param end The index to finish sorting at
+     */
 	  QuickSort(int[] A, int begin, int end) {
 		  this.begin = begin;
 		  this.end = end;
@@ -30,6 +51,10 @@ public class PSort {
 		  this.n = begin - end;
 	  }
 
+    /**
+     * Runs the QuickSort algorithm for the provided parameters.
+     */
+	  @Override
 	  public void run() {
 		  if(n <= 4) {
 			  int [] subA = Arrays.copyOfRange(A, begin, end);

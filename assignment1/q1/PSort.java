@@ -1,14 +1,16 @@
-//UT-EID=
+//UT-EID=KMG2969_
 
 
 import java.util.*;
 import java.util.concurrent.*;
 
 public class PSort{
-	static int[] A2 = {1,25,3,17,19,6,16};
+	
   public static void parallelSort(int[] A, int begin, int end){
 	 ExecutorService es = Executors.newSingleThreadExecutor();
-	  
+	 QuickSort sort = new QuickSort(A, begin, end);
+	 Future future = es.submit(sort);
+	 while(!future.isDone());
   }
   private static class QuickSort implements Runnable{
 	  public static ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -32,7 +34,6 @@ public class PSort{
 		  }else{
 			  int pivot = A[begin];
 			  int open = begin + 1;
-			  boolean openGreat = false;
 			  boolean hasRight = false;
 			  boolean hasLeft = false;
 			  int current;
@@ -41,12 +42,10 @@ public class PSort{
 				  if(current < pivot){
 					  A[i] = A[open];
 					  A[open] = current;
-					  if(!hasRight){
-						  open++;
-					  }
+					  open++;
 				  }else{
 					 if(!hasRight){  //found the first value greater than or equal to pivot
-						 openGreat = true;
+						 hasRight = true;
 						 open = i;
 					 }
 				  }
@@ -65,21 +64,40 @@ public class PSort{
 			  // the array can be divided into 2 arrays by quick sort
 			  // so it submits two
 			  if(hasRight && hasLeft){
+				  A[begin] = A[open-1];
+				  A[open-1] = pivot;
+				  pivotid = open -1;
 				  Future f1 = threadPool.submit(new QuickSort(A,begin,pivotid));
 				  Future f2 = threadPool.submit(new QuickSort(A,pivotid+1,end));
-				  if(f1.isDone() && f2.isDone()){
-					  return;
+				  
+				  try {
+					  f1.get();
+					  f2.get();
+				  } catch (Exception e) {
+					  System.out.println("Exception");
 				  }
+				  
+				  return;
 			  }else if(hasRight){
 				  Future f1 = threadPool.submit(new QuickSort(A,pivotid+1,end));
-				  if(f1.isDone()){
-					  return;
+				  
+				  try {
+					  f1.get();
+				  } catch (Exception e) {
+					  System.out.println("Exception");
 				  }
+				  
+				  return;
 			  }else if(hasLeft){
 				  Future f1 = threadPool.submit(new QuickSort(A,begin,pivotid));
-				  if(f1.isDone()){
-					  return;
+
+				  try {
+					  f1.get();
+				  } catch (Exception e) {
+					  System.out.println("Exception");
 				  }
+				  
+				  return;
 			  }
 		  }
 		  

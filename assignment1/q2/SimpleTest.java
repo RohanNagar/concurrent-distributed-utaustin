@@ -17,6 +17,21 @@ public class SimpleTest {
     int x3 = 50;
     int numThread3 = 32;
     verifyParallelSearch(x3, A3, numThread3);
+    
+    int[] A4 = {};
+    int x4 = -1;
+    int numThread4 = 32;
+    verifyParallelSearch(x4, A4, numThread3);
+    
+    int[] A5 = {50, 50, 50, 50, 50, 50, 50, 50, -1, -1};
+    int x5 = 50;
+    int numThread5 = 4;
+    verifyParallelSearch(x5, A5, numThread3);
+    
+    int[] A6 = {-1};
+    int x6 = -1;
+    int numThread6 = 64;
+    verifyParallelSearch(x6, A6, numThread3);
   }
 
   static void verifyParallelSearch(int x, int[] A, int numThread) {
@@ -33,7 +48,12 @@ public class SimpleTest {
     }
 
     int pIdx = PSearch.parallelSearch(x, A, numThread);
-  
+    if(pIdx != -1){
+    	System.out.println("Value:" + Integer.toString(A[pIdx]));
+    }else{
+    	System.out.println("Index is -1");
+    }
+    
     if (pIdx != idx) {
       System.out.println("Your parallel search algorithm is not correct");
       System.out.println("Expect: " + idx);

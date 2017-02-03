@@ -1,6 +1,5 @@
 import java.util.Arrays;
 
-// TODO: Rename back to SimpleTest before submitting
 public class SimpleTest2 {
   public static void main (String[] args) {
     

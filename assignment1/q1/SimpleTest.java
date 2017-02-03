@@ -1,27 +1,34 @@
 import java.util.Arrays;
 
 public class SimpleTest {
-  public static void main (String[] args) {
-	//Pass in arguments to the main thread if you so wish but beautiful tests have been implemented
+  public static void main(String[] args) {
+    // Pass in arguments to the main thread if you so wish but beautiful tests have been implemented
     int[] A1 = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
     verifyParallelSort(A1);
-    //But if you must, test away
+
+    // But if you must, test away
     int[] A2 = {1, 3, 5, 7, 9};
     verifyParallelSort(A2);
-    //These first 3 are part of the original simple test. they only test for one case of our QuickSort implementation 
+
+    // These first 3 are part of the original simple test. They only test one case of our
+    // QuickSort implementation
     int[] A3 = {13, 59, 24, 18, 33, 20, 11, 11, 13, 50, 10999, 97};
     verifyParallelSort(A3);
-    //Negatives just for shits and a side of giggles
-	int[] A4 = {-3450, 6, 0, 0, 0, 6000000}; // test some crazy absurd number ranges
-	verifyParallelSort(A4);
-	//what only one greater
-	int[] A5 = {0, 0, 0, 0, 0, 1}; // last comment preaches
-	verifyParallelSort(A5);
-	//I'm now realizing there could more tests
-	int[] A6 = {-1, 0, 0, 0, 0, 0}; // round 3 of yours truly
-	verifyParallelSort(A6);
-	
-    
+
+    // Negatives just for shits and a side of giggles
+    int[] A4 = {-3450, 6, 0, 0, 0, 6000000}; // test some crazy absurd number ranges
+    verifyParallelSort(A4);
+
+    // What only one greater
+    int[] A5 = {0, 0, 0, 0, 0, 1}; // last comment preaches
+    verifyParallelSort(A5);
+
+    // I'm now realizing there could more tests
+    int[] A6 = {-1, 0, 0, 0, 0, 0}; // round 3 of yours truly
+    verifyParallelSort(A6);
+
+    int[] A7 = {6, 3, 9, 2, 17, 1, 25, 0};
+    verifyParallelSort(A7);
   }
 
   static void verifyParallelSort(int[] A) {
@@ -33,7 +40,7 @@ public class SimpleTest {
 
     Arrays.sort(A);
     PSort.parallelSort(B, 0, B.length);
-   
+
     boolean isSuccess = true;
     for (int i = 0; i < A.length; i++) {
       if (A[i] != B[i]) {
@@ -50,8 +57,6 @@ public class SimpleTest {
     if (isSuccess) {
       System.out.println("Great, your sorting algorithm works for this test case");
     }
-    System.out.print(Arrays.toString(B));
-    System.out.println("");
     System.out.println("=========================================================");
   }
 

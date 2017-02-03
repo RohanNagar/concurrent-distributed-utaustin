@@ -40,6 +40,9 @@ public class PSort{
 			  for(int i = begin+1; i < end; i++){
 				  current = A[i];
 				  if(current < pivot){
+					  if(!hasLeft){ // makes sure quick sort configures for the case where there are 
+						  hasLeft = true; // values to the left of(less than) the pivot.
+					  }
 					  A[i] = A[open];
 					  A[open] = current;
 					  open++;

@@ -1,3 +1,8 @@
+/*
+ * EID's of group members
+ * ran679, kmg2969
+ */
+
 public class MonitorCyclicBarrier {
   private final int parties;
   private int count;

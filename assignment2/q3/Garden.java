@@ -12,7 +12,7 @@ public class Garden {
     * The following methods return the total number of holes dug, seeded or 
     * filled by Newton, Benjamin or Mary at the time the methods' are 
     * invoked on the garden class. */
-   public synchronized int totalHolesDugByNewton() {   }; 
-   public synchronized int totalHolesSeededByBenjamin() {   }; 
-   public synchronized int totalHolesFilledByMary() {   }; 
+   public synchronized int totalHolesDugByNewton() {   return 0; }
+   public synchronized int totalHolesSeededByBenjamin() {   return 0; }
+   public synchronized int totalHolesFilledByMary() {   return 0; }
 }

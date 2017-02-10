@@ -13,6 +13,9 @@ public class GardenTest {
     newton.start();
   }
 
+  /**
+   * An implementation of the Newton thread.
+   */
   static class Newton implements Runnable {
     private final Garden garden;
 
@@ -39,6 +42,9 @@ public class GardenTest {
     }
   }
 
+  /**
+   * An implementation of the Benjamin thread.
+   */
   protected static class Benjamin implements Runnable {
     private final Garden garden;
 
@@ -65,6 +71,9 @@ public class GardenTest {
     }
   }
 
+  /**
+   * An implementation of the Mary thread.
+   */
   protected static class Mary implements Runnable {
     private final Garden garden;
 

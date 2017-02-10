@@ -106,10 +106,11 @@ public class Garden {
     shovelLock.unlock();
   }
 
-  /*
-  * The following methods return the total number of holes dug, seeded or
-  * filled by Newton, Benjamin or Mary at the time the methods' are
-  * invoked on the garden class. */
+  /**
+   * The following methods return the total number of holes dug, seeded or
+   * filled by Newton, Benjamin or Mary at the time the methods are
+   * invoked on the garden class.
+   */
   public synchronized int totalHolesDugByNewton() {
     return holesDug.get();
   }
@@ -124,8 +125,8 @@ public class Garden {
 
   @Override
   public String toString() {
-    return "holes dug: " + holesDug
-        + "\nholes seeded: " + holesSeeded
-        + "\nholes filled: " + holesFilled;
+    return "Holes dug: " + holesDug
+        + "\nHoles seeded: " + holesSeeded
+        + "\nHoles filled: " + holesFilled;
   }
 }

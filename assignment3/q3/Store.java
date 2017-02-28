@@ -1,6 +1,7 @@
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -14,9 +15,9 @@ public class Store {
   private final AtomicInteger orderNumber;
 
   public Store(String inventoryFile) {
-    this.inventory = new ConcurrentHashMap<>();
-    this.orders = new ConcurrentHashMap<>();
-    this.userOrders = new ConcurrentHashMap<>();
+    this.inventory = new HashMap<>();
+    this.orders = new HashMap<>();
+    this.userOrders = new HashMap<>();
     this.orderNumber = new AtomicInteger(1);
 
     buildInventory(inventoryFile);
@@ -30,7 +31,7 @@ public class Store {
    * @param quantity The amount of the product being purchased
    * @return The message to send as a reply
    */
-  public String purchase(String username, String product, int quantity) {
+  public synchronized String purchase(String username, String product, int quantity) {
     Integer amountInStock = inventory.get(product);
 
     if (amountInStock == null) {
@@ -73,7 +74,7 @@ public class Store {
    * @param id The ID of the order to cancel
    * @return The message indicating success or failure
    */
-  public String cancel(int id) {
+  public synchronized String cancel(int id) {
     if (!orders.containsKey(id)) {
       return id + " not found, no such order";
     }
@@ -96,7 +97,7 @@ public class Store {
    * @param username The user to search for
    * @return A String listing of all of the orders for the requested user
    */
-  public String getOrdersForUser(String username) {
+  public synchronized String getOrdersForUser(String username) {
     if (!userOrders.containsKey(username)) {
       return "No order found for " + username;
     }
@@ -116,6 +117,9 @@ public class Store {
       builder.append("\n");
     }
 
+    // Remove last newline
+    builder.deleteCharAt(builder.lastIndexOf("\n"));
+
     return builder.toString();
   }
 
@@ -124,7 +128,7 @@ public class Store {
    *
    * @return The inventory as a String
    */
-  public String readInventory() {
+  public synchronized String readInventory() {
     StringBuilder builder = new StringBuilder();
 
     // Build string with all products

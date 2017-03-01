@@ -202,7 +202,7 @@ public class Server {
             System.out.println("ERROR: UNKNOWN MESSAGE - " + message);
             continue;
           }
-
+          reply += "\ndone";
           // Send reply
           outStream.println(reply);
           outStream.flush();

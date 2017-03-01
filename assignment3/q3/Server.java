@@ -150,16 +150,12 @@ public class Server {
         return;
       }
 
-      System.out.println(message);
-
       // Perform task of message
       String reply = performTask(store, message);
       if (reply == null) {
         System.out.println("ERROR: UNKNOWN MESSAGE - " + message);
         return;
       }
-
-      System.out.println(reply);
 
       // Send reply
       try {
@@ -195,6 +191,8 @@ public class Server {
         while (true) {
           // Retrieve message
           String message = inStream.readLine();
+          if (message == null)
+            break;
 
           // Perform task
           String reply = performTask(store, message);

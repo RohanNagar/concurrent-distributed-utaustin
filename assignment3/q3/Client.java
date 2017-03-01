@@ -1,15 +1,15 @@
 import java.util.Scanner;
 import java.net.*;
 import java.io.*;
+
 public class Client {
-  public static void main (String[] args) {
-    String hostAddress;
-    int tcpPort;
-    int udpPort;
+  private static final int BUFFER_SIZE = 2048;
+
+  public static void main(String[] args) {
     DatagramSocket udpSock;
     Socket tcpSock;
     InetAddress ia;
-    
+
     String whichSock = "T";
     if (args.length != 3) {
       System.out.println("ERROR: Provide 3 arguments");
@@ -19,147 +19,91 @@ public class Client {
       System.exit(-1);
     }
 
-    hostAddress = args[0];
-    tcpPort = Integer.parseInt(args[1]);
-    udpPort = Integer.parseInt(args[2]);
-    try{
-    	ia = InetAddress.getByName(hostAddress);
-    	udpSock = new DatagramSocket();
-    	tcpSock = new Socket(ia,tcpPort);
-        Scanner sc = new Scanner(System.in);
-        System.out.println("you can print");
-        while(sc.hasNextLine()) {
-          String cmd = sc.nextLine();
-          String[] tokens = cmd.split(" ");
-          // TODO: set the mode of communication for sending commands to the server 
-          // and display the name of the protocol that will be used in future
-          if (tokens[0].equals("setmode")) {
-        	  if(tokens[1].equals("T")){
-        		 whichSock = "T";
-        		 System.out.println("Current Communication Protocol: TCP\n");
-        	  }else if(tokens[1].equals("U")){
-        		 whichSock = "U";
-        		 System.out.println("Current Communication Protocol: UDP\n");
-        	  }else{
-        		 System.out.println("Error: Please input either 'T' or 'U'");
-        	  }
-          }
-          else if (tokens[0].equals("purchase")) {
-            // TODO: send appropriate command to the server and display the
-            // appropriate responses form the server
-        	String output = tokens[0] + " " + tokens[1]+ " " + tokens[2]+ " " + tokens[3];
-        	byte[] toServe = output.getBytes();
-        	if(whichSock.equals("U")){
-        		DatagramPacket sendPacket = new DatagramPacket(toServe, toServe.length, ia, udpPort);
-        		udpSock.send(sendPacket);
-        		byte[] rbuff = new byte[200];
-        		DatagramPacket recPacket = new DatagramPacket(rbuff, rbuff.length);
-        		udpSock.receive(recPacket);
-        		String reply = new String(recPacket.getData(), 0, recPacket.getLength());
-        		System.out.println(reply);
-        	}else{
-        		PrintWriter pout = new PrintWriter(tcpSock.getOutputStream());
-        		Scanner receiver = new Scanner(tcpSock.getInputStream());
-        		pout.println(output);
-        		pout.flush();
-      		    while(receiver.hasNextLine()){
-    			    String reply = receiver.nextLine();
-    			    if(reply.equals("done")){
-    				    break;
-    			    }
-    			    System.out.println(reply);
-    		    }
-        	}
-          } else if (tokens[0].equals("cancel")) {
-        	  String output = tokens[0] + " " + tokens[1];
-        	  byte[] toServe = output.getBytes();
-          	  if(whichSock.equals("U")){
-        		  DatagramPacket sendPacket = new DatagramPacket(toServe, toServe.length, ia, udpPort);
-        		  udpSock.send(sendPacket);
-        		  byte[] rbuff = new byte[200];
-        		  DatagramPacket recPacket = new DatagramPacket(rbuff, rbuff.length);
-        		  udpSock.receive(recPacket);
-        		  String reply = new String(recPacket.getData(), 0, recPacket.getLength());
-        		  System.out.println(reply);
-        	  }else{
-        		  PrintWriter pout = new PrintWriter(tcpSock.getOutputStream());
-        		  Scanner receiver = new Scanner(tcpSock.getInputStream());
-        		  pout.println(output);
-        		  pout.flush();
-        		  while(receiver.hasNextLine()){
-        			  String reply = receiver.nextLine();
-        			  if(reply.equals("done")){
-        				  break;
-        			  }
-        			  System.out.println(reply);
-        		  }
-        	  }
-            // TODO: send appropriate command to the server and display the
-            // appropriate responses form the server
-          } else if (tokens[0].equals("search")) {
-        	  String output = tokens[0] + " " + tokens[1];
-        	  byte[] toServe = output.getBytes();
-          	  if(whichSock.equals("U")){
-        		  DatagramPacket sendPacket = new DatagramPacket(toServe, toServe.length, ia, udpPort);
-        		  udpSock.send(sendPacket);
-        		  byte[] rbuff = new byte[200];
-        		  DatagramPacket recPacket = new DatagramPacket(rbuff, rbuff.length);
-        		  udpSock.receive(recPacket);
-        		  String reply = new String(recPacket.getData(), 0, recPacket.getLength());
-        		  System.out.println(reply);
-        	  }else{
-        		  PrintWriter pout = new PrintWriter(tcpSock.getOutputStream());
-        		  Scanner receiver = new Scanner(tcpSock.getInputStream());
-        		  pout.println(output);
-        		  pout.flush();
-        		  while(receiver.hasNextLine()){
-        			  String reply = receiver.nextLine();
-        			  if(reply.equals("done")){
-        				  break;
-        			  }
-        			  System.out.println(reply);
-        		  }
-        	  }
-            // TODO: send appropriate command to the server and display the
-            // appropriate responses form the server
-          } else if (tokens[0].equals("list")) {
-        	  String output = tokens[0];
-        	  byte[] toServe = output.getBytes();
-          	  if(whichSock.equals("U")){
-        		  DatagramPacket sendPacket = new DatagramPacket(toServe, toServe.length, ia, udpPort);
-        		  udpSock.send(sendPacket);
-        		  byte[] rbuff = new byte[200];
-        		  DatagramPacket recPacket = new DatagramPacket(rbuff, rbuff.length);
-        		  udpSock.receive(recPacket);
-        		  String reply = new String(recPacket.getData(), 0, recPacket.getLength());
-        		  System.out.println(reply);
-        	  }else{
-        		  PrintWriter pout = new PrintWriter(tcpSock.getOutputStream());
-        		  Scanner receiver = new Scanner(tcpSock.getInputStream());
-        		  pout.println(output);
-        		  pout.flush();
-        		  while(receiver.hasNextLine()){
-        			  String reply = receiver.nextLine();
-        			  if(reply.equals("done")){
-        				  break;
-        			  }
-        			  System.out.println(reply);
-        		  }
-        	  }
-            // TODO: send appropriate command to the server and display the
-            // appropriate responses form the server
-          } else {
+    String hostAddress = args[0];
+    int tcpPort = Integer.parseInt(args[1]);
+    int udpPort = Integer.parseInt(args[2]);
+
+    try {
+      ia = InetAddress.getByName(hostAddress);
+      udpSock = new DatagramSocket();
+      tcpSock = new Socket(ia, tcpPort);
+
+      PrintWriter pout = new PrintWriter(tcpSock.getOutputStream());
+      Scanner receiver = new Scanner(tcpSock.getInputStream());
+
+      Scanner sc = new Scanner(System.in);
+      System.out.println("you can print");
+
+      while (sc.hasNextLine()) {
+        String cmd = sc.nextLine();
+        String[] tokens = cmd.split(" ");
+
+        switch (tokens[0]) {
+          case "setmode":
+            if (tokens[1].equals("T")) {
+              whichSock = "T";
+              System.out.println("Current Communication Protocol: TCP");
+            } else if (tokens[1].equals("U")) {
+              whichSock = "U";
+              System.out.println("Current Communication Protocol: UDP");
+            } else {
+              System.out.println("Error: Please input either 'T' or 'U'");
+            }
+
+            break;
+
+          case "purchase":
+          case "cancel":
+          case "search":
+          case "list":
+            if (whichSock.equals("U")) {
+              sendAndReceiveUDP(ia, udpSock, udpPort, cmd);
+            } else {
+              sendAndReceiveTCP(pout, receiver, cmd);
+            }
+
+            break;
+
+          default:
             System.out.println("ERROR: No such command");
-          }
         }
-        udpSock.close();
-        tcpSock.close();
-    }catch(UnknownHostException e){
-    	System.err.println(e);
-    }catch(SocketException e){
-    	System.err.println(e);
-    }catch(IOException e){
-    	System.err.println(e);
+      }
+
+      udpSock.close();
+      tcpSock.close();
+    } catch (IOException e) {
+      System.err.println("ERROR: Unknown error occurred: " + e);
+    }
+  }
+
+  private static void sendAndReceiveUDP(InetAddress ia, DatagramSocket socket, int port, String message) {
+    byte[] toServe = message.getBytes();
+
+    try {
+      DatagramPacket sendPacket = new DatagramPacket(toServe, toServe.length, ia, port);
+      socket.send(sendPacket);
+
+      byte[] rbuff = new byte[BUFFER_SIZE];
+      DatagramPacket recPacket = new DatagramPacket(rbuff, rbuff.length);
+      socket.receive(recPacket);
+
+      String reply = new String(recPacket.getData(), 0, recPacket.getLength());
+      System.out.println(reply);
+    } catch (IOException e) {
+      System.out.println("ERROR: Unknown error occurred: " + e);
+    }
+  }
+
+  private static void sendAndReceiveTCP(PrintWriter writer, Scanner receiver, String message) {
+    writer.println(message);
+    writer.flush();
+
+    while (receiver.hasNextLine()) {
+      String reply = receiver.nextLine();
+      if (reply.equals("done")) {
+        break;
+      }
+      System.out.println(reply);
     }
   }
 }

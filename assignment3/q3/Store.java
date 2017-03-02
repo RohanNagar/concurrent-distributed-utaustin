@@ -1,3 +1,8 @@
+/*
+ * EIDs of group members
+ * ran679, kmg2969
+ */
+
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;

@@ -1,3 +1,8 @@
+/*
+ * EIDs of group members
+ * ran679, kmg2969
+ */
+
 import java.util.Scanner;
 import java.net.*;
 import java.io.*;
@@ -32,7 +37,6 @@ public class Client {
       Scanner receiver = new Scanner(tcpSock.getInputStream());
 
       Scanner sc = new Scanner(System.in);
-      System.out.println("you can print");
 
       while (sc.hasNextLine()) {
         String cmd = sc.nextLine();
@@ -42,10 +46,10 @@ public class Client {
           case "setmode":
             if (tokens[1].equals("T")) {
               whichSock = "T";
-              System.out.println("Current Communication Protocol: TCP");
+              System.out.println("TCP");
             } else if (tokens[1].equals("U")) {
               whichSock = "U";
-              System.out.println("Current Communication Protocol: UDP");
+              System.out.println("UDP");
             } else {
               System.out.println("Error: Please input either 'T' or 'U'");
             }

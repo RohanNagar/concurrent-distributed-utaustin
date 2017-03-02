@@ -1,3 +1,8 @@
+/*
+ * EIDs of group members
+ * ran679, kmg2969
+ */
+
 public class Order {
   private final int id;
   private final String username;

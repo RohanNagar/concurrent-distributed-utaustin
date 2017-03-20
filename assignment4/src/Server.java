@@ -5,17 +5,14 @@
 
 import java.io.*;
 import java.net.*;
-import java.util.Comparator;
-import java.util.ArrayList;
-import java.util.PriorityQueue;
-import java.util.LinkedList;
-import java.util.Scanner;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static java.lang.Thread.sleep;
 
 
 public class Server {
-    private static Timestamp lc;
+    private static LamportClock lc;
     private static int serverID;
     private static int numServers;
     private static int port;
@@ -24,6 +21,7 @@ public class Server {
     private static ArrayList<String> serversAddress;
     private static ArrayList<Integer> serversPort;
     private static Queue<Timestamp> processLine;
+    private static Queue<Socket> clientQ;
     private static boolean CSlooking;
     public static void main (String[] args) {
         if (args.length != 1) {
@@ -66,7 +64,7 @@ public class Server {
         Store store = new Store(filename);
 
         // Setup Logic Clock
-        lc = new Timestamp(0, serverID);
+        lc = new LamportClock();
 
         // Setup queue for processes
         processLine = new PriorityQueue<Timestamp>(0,
@@ -75,6 +73,9 @@ public class Server {
                         return Timestamp.compare(a, b);
                     }
                 });
+
+        //Setup queue for clients that will be handled
+        clientQ = new LinkedList<Socket>();
         //A flag to see if the server is currently attempting to get into the critical section
         CSlooking = false;
         // Start Threads
@@ -103,11 +104,13 @@ public class Server {
         public void run() {
             while (true) {
                 try {
-                    if(!CSlooking && amIPregnant()){
-
-                    }
                     Socket receiveSocket = socket.accept();
                     lc.tick();
+                    BufferedReader inStream = new BufferedReader(new InputStreamReader(receiveSocket.getInputStream()));
+
+                    String[] tokens = message.split(" ");
+                    //PrintWriter outStream = new PrintWriter(receiveSocket.getOutputStream());
+
                     Thread worker = new Thread(new TCPWorker(store, receiveSocket));
                     worker.start();
                 } catch (IOException e) {
@@ -157,9 +160,17 @@ public class Server {
                     }else{
 
                         // Perform task for client
-                        //Thread requester = new Thread(new TCPRequest());
+                        Timestamp newEntry = new Timestamp(lc.getValue(), serverID);
+                        processLine.add(newEntry);
+
+                        /*
+                        while(CSlooking && !amIPregnant()){
+                            CSlooking = true;
+                            sendInvitesToBabyShower();
+                        }
+                        */
                         while(ack != numServers-1){
-                            wait();
+                            sleep(10);
                         }
                         String reply = performTask(store, message);
                         if (reply == null) {
@@ -195,18 +206,10 @@ public class Server {
         }
         public void run(){
             try{
-                /*
-                for( int i = 0; i < numServers; i++){
-                    if((i+1) == serverID ){
-                        continue;
-                    }
-                */
-                    //InetAddress ia = InetAddress.getByName(serversAddress.get(i));
-                    //Socket sock = new Socket(ia, serversPort.get(i));
                 Socket sock = new Socket(ia, theport);
                 PrintWriter pout = new PrintWriter(sock.getOutputStream());
                 Scanner receiver = new Scanner(sock.getInputStream());
-                Integer thetime = lc.getLogicalClock();
+                Integer thetime = lc.getValue();
                 pout.println("RQT "+ thetime.toString() + " " + Integer.toString(port));
                 pout.flush();
                 while(receiver.hasNextLine()){
@@ -246,7 +249,7 @@ public class Server {
 
     }
     //test to see if the front of the queue is from this server
-    private static boolean amIPregnant(){
+    private static boolean amIPregnant(Timestamp entry){
         Timestamp thebaby = processLine.peek();
         if (thebaby.getPid() == serverID){
             //she got you for 18 years

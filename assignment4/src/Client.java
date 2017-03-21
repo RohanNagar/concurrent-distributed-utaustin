@@ -10,7 +10,7 @@ import java.net.*;
 import java.io.*;
 
 public class Client {
-  public static final int TIMEOUT = 100;
+  private static final int TIMEOUT = 100;
 
   private static final List<ServerInformation> servers = new ArrayList<>();
 
@@ -41,9 +41,6 @@ public class Client {
     try {
       connectToNewServer(false);
 
-      PrintWriter pout = new PrintWriter(currentConnection.getOutputStream());
-      Scanner receiver = new Scanner(currentConnection.getInputStream());
-
       while (sc.hasNextLine()) {
         String cmd = sc.nextLine();
         String[] tokens = cmd.split(" ");
@@ -53,7 +50,7 @@ public class Client {
           case "cancel":
           case "search":
           case "list":
-            performCommand(pout, receiver, cmd);
+            performCommand(cmd);
             break;
 
           default:
@@ -72,23 +69,62 @@ public class Client {
    * Performs a command by sending it to the server,
    * waiting for a response, and printing the response.
    *
-   * @param writer The output stream to send messages on.
-   * @param receiver The input stream to receive replies on.
    * @param message The message to send to the server.
    */
-  private static void performCommand(PrintWriter writer, Scanner receiver, String message) {
-    writer.println(message);
-    writer.flush();
+  private static void performCommand(String message) {
+    boolean complete = false;
+    StringBuilder reply = new StringBuilder();
 
-    // TODO: handle timeout and connect to new servers
+    while (!complete) {
+      try {
+        // Create I/O
+        PrintWriter writer = new PrintWriter(currentConnection.getOutputStream());
+        BufferedReader receiver = new BufferedReader(new InputStreamReader(currentConnection.getInputStream()));
 
-    while (receiver.hasNextLine()) {
-      String reply = receiver.nextLine();
-      if (reply.equals("done")) {
-        break;
+        // Send command message
+        writer.println(message);
+        writer.flush();
+
+        // Wait until we receive the response.
+        // In the meantime, we should keep receiving "working" messages to know that the
+        // server is still up
+        boolean waiting = true;
+        String line = null;
+        while (waiting) {
+          // Wait ready or timeout after 100 ms
+          Utilities.waitOrTimeout(receiver, TIMEOUT);
+
+          // Read reply
+          line = receiver.readLine();
+          if (!line.equals("working")) {
+            // Done working, move to parsing
+            waiting = false;
+          }
+        }
+
+        while (line != null) {
+          if (line.equals("done")) {
+            complete = true;
+
+            reply.deleteCharAt(reply.lastIndexOf("\n"));
+            break;
+          } else {
+            reply.append(line);
+            reply.append("\n");
+          }
+
+          line = receiver.readLine();
+        }
+      } catch (SocketTimeoutException e) {
+        // Timeout, connect to new server and try again
+        connectToNewServer(true);
+      } catch (IOException e) {
+        System.out.println("A fatal error occurred.");
+        System.exit(-1);
       }
-      System.out.println(reply);
     }
+
+    System.out.println(reply);
   }
 
   /**

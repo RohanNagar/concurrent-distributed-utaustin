@@ -5,15 +5,20 @@
 
 import java.io.*;
 import java.net.*;
+import java.sql.Time;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Comparator;
 
 import static java.lang.Thread.sleep;
 
 
 public class Server {
+
     private static LamportClock lc;
+    private static boolean sentRQT;
     private static int serverID;
+    private static int clientID;
     private static int numServers;
     private static int port;
     private static int ack;
@@ -22,65 +27,77 @@ public class Server {
     private static ArrayList<Integer> serversPort;
     private static Queue<Timestamp> processLine;
     private static Queue<Socket> clientQ;
-    private static boolean CSlooking;
+    private static Map<String, Socket> serverMap;
     public static void main (String[] args) {
+
         if (args.length != 1) {
             System.out.println("ERROR: Please provide a CFG file");
             System.exit(-1);
         }
         Scanner sc;
+        Store store;
         try {
-            sc = new Scanner(new FileReader(args[0]));
+            String thefile = args[0];
+            sc = new Scanner(new FileReader(thefile));
+            int line_iter = 0;
+            String filename;
+            String config = sc.nextLine();
+            String[] tokens = config.split(" ");
+            serverID = Integer.parseInt(tokens[0]);
+            numServers = Integer.parseInt(tokens[1]);
+            filename = tokens[2];
+            serversAddress = new ArrayList<String>();
+            serversPort = new ArrayList<Integer>();
+            while(sc.hasNextLine()){
+                config = sc.nextLine();
+                tokens = config.split(":");
+                int portTrans = Integer.parseInt(tokens[1]);
+                String addTrans = tokens[0];
+                serversAddress.add(addTrans);
+                serversPort.add(portTrans);
+                if(line_iter == serverID){
+                    address = addTrans;
+                    port = portTrans;
+                }
+                line_iter++;
+            }
+            sc.close();
+            // Set up store
+            store = new Store(filename);
+
+            // Setup Logic Clock
+            lc = new LamportClock();
+            Comparator<Timestamp> toCompare = new StringLengthComparator();
+            // Setup queue for processes
+            processLine = new PriorityQueue<Timestamp>(11, toCompare);
+
+
+            //Setup queue for clients that will be handled
+            clientQ = new LinkedList<Socket>();
+            //A flag to see if the server is currently attempting to get into the critical section
+            sentRQT = false;
+            //set up socket connections to all of the other servers
+            serverMap = new HashMap<>();
+            for(int i = 0; i < serversAddress.size(); i++){
+                String address = serversAddress.get(i);
+                InetAddress iaNew = InetAddress.getByName(address);
+                int popo = serversPort.get(i);
+                Socket nextSocket = new Socket(iaNew, popo);
+                serverMap.put(Integer.toString(i), nextSocket);
+            }
+
+            // Start Threads
+            TCPListener tcpListener = new TCPListener(port, store);
+            tcpListener.start();
         } catch (FileNotFoundException e) {
             System.out.println("FATAL ERROR:CFG file not found");
             System.exit(-1);
-        }
-        int line_iter = 0;
-        String filename;
-        while(sc.hasNextLine()){
-            String config = sc.nextLine();
-            //setup for first line of the CFG file
-            if(line_iter == 0){
-                String[] tokens = config.split(" ");
-                serverID = Integer.parseInt(tokens[0]);
-                numServers = Integer.parseInt(tokens[1]);
-                filename = tokens[2];
-            //setup for the rest of the CFG file (server info)
-            }else{
-                String[] tokens = config.split(":");
-                int portTrans = Integer.parseInt(tokens[1]);
-                serversAddress.add(tokens[0]);
-                serversPort.add(portTrans);
-                if(line_iter == serverID){
-                    address = tokens[0];
-                    port = portTrans;
-                }
-                //InetAddress ia = InetAddress.getByName(tokens[0]);
-            }
-            line_iter++;
+        }catch(UnknownHostException e) {
+            System.out.println("ABORTING..." + e);
+        }catch(IOException e){
+            System.out.print("Failed in intial server socket setup... "+ e);
         }
 
-        // Set up store
-        Store store = new Store(filename);
-
-        // Setup Logic Clock
-        lc = new LamportClock();
-
-        // Setup queue for processes
-        processLine = new PriorityQueue<Timestamp>(0,
-                new Comparator<Timestamp>() {
-                    public int compare(Timestamp a, Timestamp b) {
-                        return Timestamp.compare(a, b);
-                    }
-                });
-
-        //Setup queue for clients that will be handled
-        clientQ = new LinkedList<Socket>();
-        //A flag to see if the server is currently attempting to get into the critical section
-        CSlooking = false;
-        // Start Threads
-        TCPListener tcpListener = new TCPListener(port, store);
-        tcpListener.start();
     }
 
     /**
@@ -95,8 +112,20 @@ public class Server {
                 this.socket = new ServerSocket(port);
             } catch (IOException e) {
                 System.out.println("An error occurred: " + e);
-
                 System.exit(-1);
+            }
+            for(int i = 0; i < serversAddress.size(); i++){
+                try {
+                    String address = serversAddress.get(i);
+                    InetAddress iaNew = InetAddress.getByName(address);
+                    int popo = serversPort.get(i);
+                    Socket nextSocket = new Socket(iaNew, popo);
+                    serverMap.put(Integer.toString(i), nextSocket);
+                    PrintWriter harbringer = new PrintWriter(nextSocket.getOutputStream());
+                    harbringer.println("server " + Integer.toString(i+1));
+                }catch (IOException e){
+                    System.out.print("Server "+ Integer.toString(i) + " not up yet.");
+                }
             }
         }
 
@@ -105,14 +134,61 @@ public class Server {
             while (true) {
                 try {
                     Socket receiveSocket = socket.accept();
-                    lc.tick();
                     BufferedReader inStream = new BufferedReader(new InputStreamReader(receiveSocket.getInputStream()));
-
+                    String message = inStream.readLine();
                     String[] tokens = message.split(" ");
-                    //PrintWriter outStream = new PrintWriter(receiveSocket.getOutputStream());
+                    if(tokens[0] == "ACK"){
+                        ack++;
+                        int sClock = Integer.parseInt(tokens[0]);
+                        lc.receiveAction(sClock);
+                        if(ack == serverMap.size() - 1){
+                            Socket doCS = clientQ.remove();
+                            PrintWriter getGoing = new PrintWriter(doCS.getOutputStream());
+                            Scanner theReturn = new Scanner(doCS.getInputStream());
+                            getGoing.println("go");
+                            getGoing.flush();
+                            while(theReturn.hasNextLine()){
+                                String reply = theReturn.nextLine();
+                                if (reply.equals("cool")) {
+                                    sentRQT = false;
+                                    ack = 0;
+                                    //do Release;
+                                    break;
+                                }
+                            }
+                        }
+                    }else if(tokens[0] == "Client"){ // add to queue of clients that need to be serviced
+                        clientQ.add(receiveSocket);
+                        processLine.add(new Timestamp(lc.getValue(), serverID));
+                        if(!sentRQT){ //there is a client who is already requesting to use critical section
+                            if(amIPregnant()) { //send rqt to use CS to other servers
+                                sendInvitesToBabyShower();
+                                sentRQT = true;
+                            }
+                        }
+                    }else if(tokens[0] == "RQT"){  // add server timestamp to queue
+                        int chaClock = Integer.parseInt(tokens[1]);
+                        int chaID = Integer.parseInt(tokens[2]);
+                        Timestamp challenger = new Timestamp(chaClock, chaID);
+                        lc.receiveAction(chaClock);
+                        processLine.add(challenger);
 
-                    Thread worker = new Thread(new TCPWorker(store, receiveSocket));
-                    worker.start();
+                    }else if(tokens[0] == "RLS"){  // this message should also change the store. sequence of messages ending with done
+
+                    }else if(tokens[0] == "Server"){  // this message should also change the store. sequence of messages ending with done
+                        int whichS = Integer.parseInt(tokens[1]);
+                        String address = serversAddress.get(whichS);
+                        InetAddress iaNew = InetAddress.getByName(address);
+                        int popo = serversPort.get(whichS);
+                        Socket nextSocket = new Socket(iaNew, popo);
+                        serverMap.put(Integer.toString(whichS), nextSocket);
+                    } else { //create a thread that it used to continue communication with client
+                        lc.tick();
+                        Thread newClient = new Thread(new clientStorage(receiveSocket, message, Integer.toString(clientID), store));
+                        clientID++;
+                        newClient.start();
+                    }
+
                 } catch (IOException e) {
                     System.out.println("ABORTING. An error occurred: " + e);
 
@@ -125,101 +201,79 @@ public class Server {
 
   /* ----- Workers ----- */
 
-    private static class TCPWorker implements Runnable {
-        private final Store store;
+    private static class clientStorage implements Runnable {
         private final Socket socket;
+        private final String first;
+        private final String clId;
+        private final Store store;
 
-        TCPWorker(Store store, Socket socket) {
-            this.store = store;
+        clientStorage(Socket socket, String first, String clId, Store store) {
             this.socket = socket;
+            this.first = first;
+            this.clId = clId;
+            this.store = store;
         }
 
         @Override
         public void run() {
             try {
-                BufferedReader inStream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                //BufferedReader inStream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                Scanner inStream = new Scanner(socket.getInputStream());
                 PrintWriter outStream = new PrintWriter(socket.getOutputStream());
-
+                String toSend = "Client";
+                InetAddress iAd = InetAddress.getByName(address);
+                Socket momma = new Socket(iAd, port);
+                PrintWriter mommawrite = new PrintWriter(momma.getOutputStream());
+                Scanner mommarec = new Scanner(momma.getInputStream());
+                mommawrite.println(toSend);
+                mommawrite.flush();
+                while(mommarec.hasNextLine()){ //gets message back from momma
+                    String reply = mommarec.nextLine();
+                    if(reply == "go"){
+                        toSend = performTask(store, first);
+                    }
+                    //lets change this so that it completes transaction with store
+                    outStream.println(toSend);
+                    outStream.flush();
+                    break;
+                }
                 // Keep reading while the connection is open
                 while (true) {
-                    // Retrieve message
-                    String message = inStream.readLine();
-                    if (message == null)
-                        break;
-                    String[] tokens = message.split(" ");
-                    if (tokens[0] == "RQT"){
-                        //Request message is received
-                        Timestamp newEntry;
-                        int theclock = Integer.parseInt(tokens[1]);
-                        int thepid = Integer.parseInt(tokens[2]);
-                        newEntry = new Timestamp(theclock, thepid);
-                        processLine.add(newEntry);
-                    }else if(tokens[0] == "REL"){
-                        //Release message is received
-
-                    }else{
-
-                        // Perform task for client
-                        Timestamp newEntry = new Timestamp(lc.getValue(), serverID);
-                        processLine.add(newEntry);
-
-                        /*
-                        while(CSlooking && !amIPregnant()){
-                            CSlooking = true;
-                            sendInvitesToBabyShower();
+                    while(inStream.hasNextLine()){
+                        toSend = "Client";
+                        mommawrite.println(toSend);
+                        mommawrite.flush();
+                        while(mommarec.hasNextLine()){ //not sure if it would block if I just did an if statement
+                            String reply = mommarec.nextLine();
+                            if(reply == "go"){
+                                toSend = performTask(store, first);
+                            }
+                            //change this so that it completes transaction
+                            outStream.println(toSend);
+                            outStream.flush();
+                            break;
                         }
-                        */
-                        while(ack != numServers-1){
-                            sleep(10);
-                        }
-                        String reply = performTask(store, message);
-                        if (reply == null) {
-                            System.out.println("ERROR: UNKNOWN MESSAGE - " + message);
-                            continue;
-                        }
-                        reply += "\ndone";
-                        // Send reply
-                        outStream.println(reply);
-                        outStream.flush();
                     }
-                    lc.tick();
                 }
             } catch (IOException e) {
-                System.out.println("ABORTING..." + e);
-            } catch (InterruptedException e){
                 System.out.println("ABORTING..." + e);
             }
         }
     }
 
     private static class TCPRequest implements Runnable{
-        InetAddress ia;
-        int theport;
-        TCPRequest(String aAddress, int theport){
-            try{
-                this.ia = InetAddress.getByName(aAddress);
-                this.theport = theport;
-            } catch(IOException e){
-                System.out.println("ABORTING..." + e);
-            }
-
+        Socket sock;
+        String thetime;
+        TCPRequest(Socket sock, String thetime){
+            this.sock = sock;
+            this.thetime = thetime;
         }
         public void run(){
             try{
-                Socket sock = new Socket(ia, theport);
                 PrintWriter pout = new PrintWriter(sock.getOutputStream());
                 Scanner receiver = new Scanner(sock.getInputStream());
-                Integer thetime = lc.getValue();
-                pout.println("RQT "+ thetime.toString() + " " + Integer.toString(port));
+                pout.println("RQT "+ thetime + " " + serverID);
                 pout.flush();
-                while(receiver.hasNextLine()){
-                    String reply = receiver.nextLine();
-                    if(reply == "ACK"){
-                        ack++;
-                        break;
-                    }
-                }
-                sock.close();
             } catch(IOException e){
                 System.out.println("ABORTING..." + e);
             }
@@ -249,7 +303,7 @@ public class Server {
 
     }
     //test to see if the front of the queue is from this server
-    private static boolean amIPregnant(Timestamp entry){
+    private static boolean amIPregnant(){
         Timestamp thebaby = processLine.peek();
         if (thebaby.getPid() == serverID){
             //she got you for 18 years
@@ -261,12 +315,34 @@ public class Server {
     }
 
     private static void sendInvitesToBabyShower(){
-        for( int i = 0; i < numServers; i++) {
-            if ((i + 1) == serverID) {
-                continue;
-            }
-            TCPRequest yourMom = new TCPRequest(serversAddress.get(i), serversPort.get(i));
+        Iterator it = serverMap.entrySet().iterator();
+
+        while(it.hasNext()){
+            Map.Entry<String,Socket> pair = (Map.Entry)it.next();
+            Socket nextServe = pair.getValue();
+            lc.sendAction();
+            String thetime = Integer.toString(lc.getValue());
+            TCPRequest yourMom = new TCPRequest(nextServe, thetime);
             yourMom.run();
+        }
+    }
+    private static class StringLengthComparator implements Comparator<Timestamp> {
+
+        @Override
+        public int compare(Timestamp x, Timestamp y) {
+            int xstamp= x.getLogicalClock();
+            int ystamp= y.getLogicalClock();
+
+            if (xstamp > ystamp)
+                return 1;
+            if (xstamp <  ystamp)
+                return -1;
+            /*
+            if (a.pid > b.pid) return 1;
+            if (a.pid < b.pid)
+                return -1;
+            */
+            return 0;
         }
     }
 }

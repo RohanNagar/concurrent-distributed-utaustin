@@ -16,7 +16,7 @@ public class LamportClock {
         // include c in message
         c = c + 1;
     }
-    public void receiveAction(int src, int sentValue) {
+    public void receiveAction(int sentValue) {
         c = Math.max(c, sentValue) + 1;
     }
 }

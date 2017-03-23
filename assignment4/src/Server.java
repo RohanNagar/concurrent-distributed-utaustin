@@ -39,7 +39,7 @@ public class Server {
         try {
             String thefile = args[0];
             sc = new Scanner(new FileReader(thefile));
-            int line_iter = 0;
+            int line_iter = 1;
             String filename;
             String config = sc.nextLine();
             String[] tokens = config.split(" ");
@@ -78,6 +78,7 @@ public class Server {
             sentRQT = false;
             //set up socket connections to all of the other servers
             serverMap = new HashMap<>();
+            /*
             for(int i = 0; i < serversAddress.size(); i++){
                 String address = serversAddress.get(i);
                 InetAddress iaNew = InetAddress.getByName(address);
@@ -85,15 +86,13 @@ public class Server {
                 Socket nextSocket = new Socket(iaNew, popo);
                 serverMap.put(Integer.toString(i), nextSocket);
             }
-
+            */
             // Start Threads
             TCPListener tcpListener = new TCPListener(port, store);
             tcpListener.start();
         } catch (FileNotFoundException e) {
             System.out.println("FATAL ERROR:CFG file not found");
             System.exit(-1);
-        }catch(UnknownHostException e) {
-            System.out.println("ABORTING..." + e);
         }catch(IOException e){
             System.out.print("Failed in intial server socket setup... "+ e);
         }
@@ -115,12 +114,15 @@ public class Server {
                 System.exit(-1);
             }
             for(int i = 0; i < serversAddress.size(); i++){
+                if(i+1 == serverID){
+                    continue;
+                }
                 try {
                     String address = serversAddress.get(i);
                     InetAddress iaNew = InetAddress.getByName(address);
                     int popo = serversPort.get(i);
                     Socket nextSocket = new Socket(iaNew, popo);
-                    serverMap.put(Integer.toString(i), nextSocket);
+                    serverMap.put(Integer.toString(i+1), nextSocket);
                     PrintWriter harbringer = new PrintWriter(nextSocket.getOutputStream());
                     harbringer.println("server " + Integer.toString(i+1));
                 }catch (IOException e){

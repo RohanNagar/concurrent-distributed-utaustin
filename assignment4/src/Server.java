@@ -27,7 +27,7 @@ public class Server {
     private static ArrayList<Integer> serversPort;
     private static Queue<Timestamp> processLine;
     private static Queue<Socket> clientQ;
-    private static Map<String, Socket> serverMap;
+    //private static Map<String, Socket> serverMap;
     public static void main (String[] args) {
 
         if (args.length != 1) {
@@ -77,7 +77,7 @@ public class Server {
             //A flag to see if the server is currently attempting to get into the critical section
             sentRQT = false;
             //set up socket connections to all of the other servers
-            serverMap = new HashMap<>();
+            //serverMap = new HashMap<>();
             /*
             for(int i = 0; i < serversAddress.size(); i++){
                 String address = serversAddress.get(i);
@@ -93,8 +93,6 @@ public class Server {
         } catch (FileNotFoundException e) {
             System.out.println("FATAL ERROR:CFG file not found");
             System.exit(-1);
-        }catch(IOException e){
-            System.out.print("Failed in intial server socket setup... "+ e);
         }
 
     }
@@ -105,7 +103,9 @@ public class Server {
     private static class TCPListener extends Thread {
         private ServerSocket socket;
         private Store store;
+        private Map<String, Socket> serverMap;
         TCPListener(int port, Store store) {
+            this.serverMap = new HashMap<String, Socket>();
             this.store = store;
             try {
                 this.socket = new ServerSocket(port);
@@ -124,9 +124,13 @@ public class Server {
                     Socket nextSocket = new Socket(iaNew, popo);
                     serverMap.put(Integer.toString(i+1), nextSocket);
                     PrintWriter harbringer = new PrintWriter(nextSocket.getOutputStream());
-                    harbringer.println("server " + Integer.toString(i+1));
+                    Scanner returnmess = new Scanner(nextSocket.getInputStream());
+                    harbringer.println("server " + Integer.toString(serverID));
+                    harbringer.flush();
+                    System.out.print("Server "+ Integer.toString(i+1) + " is up.");
+
                 }catch (IOException e){
-                    System.out.print("Server "+ Integer.toString(i) + " not up yet.");
+                    System.out.print("Server "+ Integer.toString(i+1) + " not up yet.");
                 }
             }
         }
@@ -137,9 +141,16 @@ public class Server {
                 try {
                     Socket receiveSocket = socket.accept();
                     BufferedReader inStream = new BufferedReader(new InputStreamReader(receiveSocket.getInputStream()));
+                    /*
+                    while(true){
+                        if(inStream.ready()){
+                            break;
+                        }
+                    }
+                    */
                     String message = inStream.readLine();
                     String[] tokens = message.split(" ");
-                    if(tokens[0] == "ACK"){
+                    if(tokens[0].equals("ACK")){
                         ack++;
                         int sClock = Integer.parseInt(tokens[0]);
                         lc.receiveAction(sClock);
@@ -159,31 +170,32 @@ public class Server {
                                 }
                             }
                         }
-                    }else if(tokens[0] == "Client"){ // add to queue of clients that need to be serviced
+                    }else if(tokens[0].equals("Client")){ // add to queue of clients that need to be serviced
                         clientQ.add(receiveSocket);
                         processLine.add(new Timestamp(lc.getValue(), serverID));
                         if(!sentRQT){ //there is a client who is already requesting to use critical section
                             if(amIPregnant()) { //send rqt to use CS to other servers
-                                sendInvitesToBabyShower();
+                                sendInvitesToBabyShower(serverMap);
                                 sentRQT = true;
                             }
                         }
-                    }else if(tokens[0] == "RQT"){  // add server timestamp to queue
+                    }else if(tokens[0].equals("RQT")){  // add server timestamp to queue
                         int chaClock = Integer.parseInt(tokens[1]);
                         int chaID = Integer.parseInt(tokens[2]);
                         Timestamp challenger = new Timestamp(chaClock, chaID);
                         lc.receiveAction(chaClock);
                         processLine.add(challenger);
 
-                    }else if(tokens[0] == "RLS"){  // this message should also change the store. sequence of messages ending with done
+                    }else if(tokens[0].equals("RLS")){  // this message should also change the store. sequence of messages ending with done
 
-                    }else if(tokens[0] == "Server"){  // this message should also change the store. sequence of messages ending with done
-                        int whichS = Integer.parseInt(tokens[1]);
+                    }else if(tokens[0].equals("server")){  // this message should also change the store. sequence of messages ending with done
+                        int whichS = Integer.parseInt(tokens[1]) - 1;
                         String address = serversAddress.get(whichS);
                         InetAddress iaNew = InetAddress.getByName(address);
                         int popo = serversPort.get(whichS);
                         Socket nextSocket = new Socket(iaNew, popo);
                         serverMap.put(Integer.toString(whichS), nextSocket);
+                        System.out.println("Server " + Integer.toString(whichS)+ " is now up");
                     } else { //create a thread that it used to continue communication with client
                         lc.tick();
                         Thread newClient = new Thread(new clientStorage(receiveSocket, message, Integer.toString(clientID), store));
@@ -316,7 +328,7 @@ public class Server {
         }
     }
 
-    private static void sendInvitesToBabyShower(){
+    private static void sendInvitesToBabyShower(Map<String, Socket> serverMap){
         Iterator it = serverMap.entrySet().iterator();
 
         while(it.hasNext()){

@@ -20,8 +20,18 @@ public class Client {
   public static void main(String[] args) {
     // Obtain number of servers to have available
     Scanner sc = new Scanner(System.in);
+    //int numServers = Integer.parseInt(sc.nextLine());
+    if (args.length != 1) {
+      System.out.println("ERROR: Please provide a CFG file");
+      System.exit(-1);
+    }
+    try {
+      String thefile = args[0];
+      sc = new Scanner(new FileReader(thefile));
+    }catch(IOException e){
+      System.out.println("fuck you");
+    }
     int numServers = Integer.parseInt(sc.nextLine());
-
     // Populate server information
     for (int i = 0; i < numServers; i++) {
       String server = sc.nextLine();
@@ -37,7 +47,7 @@ public class Client {
         System.out.println("Ignoring server and continuing...");
       }
     }
-
+    sc = new Scanner(System.in);
     try {
       connectToNewServer(false);
 
@@ -148,7 +158,9 @@ public class Client {
 
       try {
         currentConnection = new Socket(information.getAddress(), information.getPort());
-
+        PrintWriter protocol = new PrintWriter(currentConnection.getOutputStream());
+        protocol.println("yas");
+        protocol.flush();
         // Return if we successfully connected
         currentServerNumber = i;
         return;

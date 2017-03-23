@@ -14,7 +14,7 @@ import static java.lang.Thread.sleep;
 
 
 public class Server {
-
+    private static final int TIMEOUT = 10000;
     private static LamportClock lc;
     private static boolean sentRQT;
     private static int serverID;
@@ -25,9 +25,10 @@ public class Server {
     private static String address;
     private static ArrayList<String> serversAddress;
     private static ArrayList<Integer> serversPort;
+    private static volatile Map<String, Boolean> serverCheck;
     private static Queue<Timestamp> processLine;
     private static Queue<Socket> clientQ;
-    //private static Map<String, Socket> serverMap;
+    private static Map<String, Socket> serverMap;
     public static void main (String[] args) {
 
         if (args.length != 1) {
@@ -77,7 +78,8 @@ public class Server {
             //A flag to see if the server is currently attempting to get into the critical section
             sentRQT = false;
             //set up socket connections to all of the other servers
-            //serverMap = new HashMap<>();
+            serverMap = new HashMap<>();
+            serverCheck = new HashMap<>();
             /*
             for(int i = 0; i < serversAddress.size(); i++){
                 String address = serversAddress.get(i);
@@ -103,10 +105,8 @@ public class Server {
     private static class TCPListener extends Thread {
         private ServerSocket socket;
         private Store store;
-        private Map<String, Socket> serverMap;
         private Timestamp topDog;
         TCPListener(int port, Store store) {
-            this.serverMap = new HashMap<String, Socket>();
             this.store = store;
             try {
                 this.socket = new ServerSocket(port);
@@ -124,6 +124,7 @@ public class Server {
                     int popo = serversPort.get(i);
                     Socket nextSocket = new Socket(iaNew, popo);
                     serverMap.put(Integer.toString(i+1), nextSocket);
+                    serverCheck.put(Integer.toString(i+1), false);
                     PrintWriter harbringer = new PrintWriter(nextSocket.getOutputStream());
                     Scanner returnmess = new Scanner(nextSocket.getInputStream());
                     harbringer.println("server " + Integer.toString(serverID));
@@ -184,7 +185,7 @@ public class Server {
                         processLine.add(new Timestamp(lc.getValue(), serverID));
                         if(!sentRQT){ //there is a client who is already requesting to use critical section
                             if(amIPregnant()) { //send rqt to use CS to other servers
-                                sendInvitesToBabyShower(serverMap);
+                                sendInvitesToBabyShower();
                                 sentRQT = true;
                             }
                         }
@@ -210,7 +211,8 @@ public class Server {
                         //InetAddress iaNew = InetAddress.getByName(address);
                         //int popo = serversPort.get(whichS);
                         //Socket nextSocket = new Socket(iaNew, popo);
-                        serverMap.put(Integer.toString(whichS), receiveSocket);
+                        serverMap.put(tokens[1], receiveSocket);
+                        serverCheck.put(tokens[1], false);
                         System.out.println("Server " + tokens[1] + " is now up\n");
                         Thread sThread = new Thread(new serverStorage(receiveSocket, tokens[1]));
 
@@ -220,6 +222,7 @@ public class Server {
                         Thread newClient = new Thread(new clientStorage(receiveSocket, message, Integer.toString(clientID), store));
                         clientID++;
                         newClient.start();
+                        newClient.interrupt();
                         System.out.println("Initial connection to a new client\n");
                     }
 
@@ -256,12 +259,12 @@ public class Server {
                 PrintWriter outStream = new PrintWriter(socket.getOutputStream());
                 String toSend = "Client";
                 InetAddress iAd = InetAddress.getByName(address);
-                Socket momma = new Socket(iAd, port);
-                PrintWriter mommawrite = new PrintWriter(momma.getOutputStream());
-                Scanner mommarec = new Scanner(momma.getInputStream());
                 // Keep reading while the connection is open
                 while (true) {
                     while(inStream.hasNextLine()){
+                        Socket momma = new Socket(iAd, port);
+                        PrintWriter mommawrite = new PrintWriter(momma.getOutputStream());
+                        Scanner mommarec = new Scanner(momma.getInputStream());
                         toSend = "Client";
                         mommawrite.println(toSend);
                         mommawrite.flush();
@@ -272,8 +275,11 @@ public class Server {
                                 toSend = performTask(store, theCommand);
                             }
                             //change this so that it completes transaction
-                            outStream.println(toSend);
+                            outStream.println(toSend + "\ndone");
                             outStream.flush();
+                            mommawrite.println("cool");
+                            mommawrite.flush();
+                            momma.close();
                             break;
                         }
                     }
@@ -287,31 +293,66 @@ public class Server {
     private static class serverStorage implements Runnable {
         private final Socket socket;
         private final String sId;
+        private boolean ackCheck;
+        private InetAddress iAd;
 
         serverStorage(Socket socket, String sId) {
             this.socket = socket;
             this.sId = sId;
+            ackCheck = false;
+
         }
 
         @Override
         public void run() {
             try {
-                //BufferedReader inStream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                Scanner inStream = new Scanner(socket.getInputStream());
+                BufferedReader inStream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                //Scanner inStream = new Scanner(socket.getInputStream());
                 PrintWriter outStream = new PrintWriter(socket.getOutputStream());
-                InetAddress iAd = InetAddress.getByName(address);
+                iAd = InetAddress.getByName(address);
                 // Keep reading while the connection is open
                 while (true) {
-                    while(inStream.hasNextLine()){
+
+                    if(serverCheck.get(sId)){
+                        Utilities.waitOrTimeout(inStream, TIMEOUT);
+                    }
+
+                    if(inStream.ready()){
                         Socket momma = new Socket(iAd, port);
                         PrintWriter mommawrite = new PrintWriter(momma.getOutputStream());
                         Scanner mommarec = new Scanner(momma.getInputStream());
-                        String toSend = inStream.nextLine();
+                        String toSend = inStream.readLine();
+                        if(toSend.equals("ACK")){
+                            //ackCheck = true;
+                            serverCheck.replace(sId,false);
+                        }
                         mommawrite.println(toSend);
                         mommawrite.flush();
                         momma.close();
                     }
                 }
+            }catch (SocketTimeoutException e) {
+                // Timeout, connect to new server and try again
+                /*
+                if(ackCheck){
+                    try {
+                        Socket momma = new Socket(iAd, port);
+                        PrintWriter mommawrite = new PrintWriter(momma.getOutputStream());
+                        Scanner mommarec = new Scanner(momma.getInputStream());
+                        String toSend = "REMOVE";
+                        mommawrite.println(toSend);
+                        mommawrite.flush();
+                        momma.close();
+                    } catch (IOException f) {
+                        System.out.println("ABORTING..." + f);
+                    }
+                }
+                */
+                serverCheck.remove(sId);
+                serverMap.remove(sId);
+                System.out.println("server " + sId + " disconnected");
+
+
             } catch (IOException e) {
                 System.out.println("ABORTING..." + e);
             }
@@ -321,18 +362,22 @@ public class Server {
     private static class TCPRequest implements Runnable{
         Socket sock;
         String thetime;
-        TCPRequest(Socket sock, String thetime){
+        String sId;
+        TCPRequest(Socket sock, String thetime, String sId){
             this.sock = sock;
             this.thetime = thetime;
+            this.sId = sId;
         }
         public void run(){
             try{
                 PrintWriter pout = new PrintWriter(sock.getOutputStream());
-                Scanner receiver = new Scanner(sock.getInputStream());
                 pout.println("RQT "+ thetime + " " + serverID);
                 pout.flush();
+                serverCheck.replace(sId,true);
+
             } catch(IOException e){
-                System.out.println("ABORTING..." + e);
+                System.out.println("Abort.... ");
+
             }
         }
     }
@@ -371,15 +416,16 @@ public class Server {
         }
     }
 
-    private static void sendInvitesToBabyShower(Map<String, Socket> serverMap){
+    private static void sendInvitesToBabyShower(){
         Iterator it = serverMap.entrySet().iterator();
 
         while(it.hasNext()){
             Map.Entry<String,Socket> pair = (Map.Entry)it.next();
             Socket nextServe = pair.getValue();
+            String theId = pair.getKey();
             lc.sendAction();
             String thetime = Integer.toString(lc.getValue());
-            TCPRequest yourMom = new TCPRequest(nextServe, thetime);
+            TCPRequest yourMom = new TCPRequest(nextServe, thetime, theId);
             yourMom.run();
         }
     }

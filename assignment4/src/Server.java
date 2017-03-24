@@ -506,6 +506,10 @@ public class Server {
 
     private static synchronized void removePIDFromQueue(int pid) {
         Timestamp timestamp = currentRequests.get(pid);
+        if (timestamp == null) {
+            return;
+        }
+
         processLine.remove(timestamp);
         currentRequests.remove(pid);
     }

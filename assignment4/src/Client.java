@@ -132,6 +132,7 @@ public class Client {
         }
       } catch (SocketTimeoutException e) {
         // Timeout, connect to new server and try again
+        System.out.println("TIMEOUT.");
         connectToNewServer(true);
       } catch (IOException e) {
         System.out.println("A fatal error occurred #2.");

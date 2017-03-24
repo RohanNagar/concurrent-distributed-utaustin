@@ -185,8 +185,27 @@ public class Server {
                         processLine.add(new Timestamp(lc.getValue(), serverID));
                         if(!sentRQT){ //there is a client who is already requesting to use critical section
                             if(amIPregnant()) { //send rqt to use CS to other servers
-                                sendInvitesToBabyShower();
-                                sentRQT = true;
+                                if (serverMap.size() > 0) {
+                                    sendInvitesToBabyShower();
+                                    sentRQT = true;
+                                } else {
+                                    Socket doCS = clientQ.remove();
+                                    PrintWriter getGoing = new PrintWriter(doCS.getOutputStream());
+                                    Scanner theReturn = new Scanner(doCS.getInputStream());
+                                    getGoing.println("go");
+                                    getGoing.flush();
+                                    while(theReturn.hasNextLine()){
+                                        String reply = theReturn.nextLine();
+                                        if (reply.equals("cool")) {
+                                            sentRQT = false;
+                                            ack = 0;
+                                            topDog = null;
+
+                                            releaseCS(serverMap, store);
+                                            break;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }else if(tokens[0].equals("RQT")){  // add server timestamp to queue

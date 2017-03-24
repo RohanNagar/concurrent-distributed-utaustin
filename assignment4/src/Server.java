@@ -159,10 +159,10 @@ public class Server {
                                 break;
                             }
                         }
+
                     }
                     Socket receiveSocket = socket.accept();
                     Momma(receiveSocket);
-
 
                 } catch (IOException e) {
                     System.out.println("ABORTING. An error occurred: " + e);

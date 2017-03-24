@@ -5,9 +5,7 @@
 
 import java.io.*;
 import java.net.*;
-import java.sql.Time;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Comparator;
 
 import static java.lang.Thread.sleep;
@@ -171,7 +169,8 @@ public class Server {
                                     sentRQT = false;
                                     ack = 0;
                                     topDog = null;
-                                    //do Release;
+
+                                    releaseCS(serverMap, store);
                                     break;
                                 }
                             }
@@ -204,7 +203,19 @@ public class Server {
                         //}
 
                     }else if(tokens[0].equals("RLS")){  // this message should also change the store. sequence of messages ending with done
+                        System.out.println("Got RLS");
+                        System.out.println(message);
+                        String[] split = message.split(";");
 
+                        int receivedTime = Integer.parseInt(split[1]);
+                        lc.receiveAction(receivedTime);
+
+                        // Update store
+                        System.out.println("SENDING STORE STRING: " + split[2]);
+                        Store sentStore = Store.fromString(split[2]);
+                        store.updateStore(sentStore);
+
+                        System.out.println("Done updating store.");
                     }else if(tokens[0].equals("server")){  // this message should also change the store. sequence of messages ending with done
                         int whichS = Integer.parseInt(tokens[1]) - 1;
                         String address = serversAddress.get(whichS);
@@ -381,6 +392,33 @@ public class Server {
             }
         }
     }
+
+    private static class TCPRelease implements Runnable {
+        private final Socket socket;
+        private final String time;
+        private final Store store;
+
+        TCPRelease(Socket socket, String time, Store store) {
+            this.socket = socket;
+            this.time = time;
+            this.store = store;
+        }
+
+        public void run() {
+            try {
+                PrintWriter writer = new PrintWriter(socket.getOutputStream());
+
+                String toSend = "RLS ;" + time + ";" + store;
+                System.out.println("SENDING:\n" + toSend);
+
+                writer.println(toSend);
+                writer.flush();
+            } catch(IOException e){
+                System.out.println("Unable to send release message.");
+            }
+        }
+    }
+
     private static String performTask(Store store, String task) {
         String[] tokens = task.split(" ");
         switch (tokens[0].trim()) {
@@ -404,6 +442,7 @@ public class Server {
         }
 
     }
+
     //test to see if the front of the queue is from this server
     private static boolean amIPregnant(){
         Timestamp thebaby = processLine.peek();
@@ -429,6 +468,19 @@ public class Server {
             yourMom.run();
         }
     }
+
+    private static void releaseCS(Map<String, Socket> servers, Store store) {
+        for (Map.Entry<String, Socket> pair : servers.entrySet()) {
+            Socket next = pair.getValue();
+
+            lc.sendAction();
+            String time = Integer.toString(lc.getValue());
+
+            TCPRelease release = new TCPRelease(next, time, store);
+            release.run();
+        }
+    }
+
     private static class StringLengthComparator implements Comparator<Timestamp> {
 
         @Override

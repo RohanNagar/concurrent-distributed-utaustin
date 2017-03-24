@@ -10,7 +10,7 @@ import java.net.*;
 import java.io.*;
 
 public class Client {
-  private static final int TIMEOUT = 100;
+  private static final int TIMEOUT = 1500;
 
   private static final List<ServerInformation> servers = new ArrayList<>();
 

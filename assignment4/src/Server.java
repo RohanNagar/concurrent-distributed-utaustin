@@ -14,7 +14,7 @@ import static java.lang.Thread.sleep;
 
 
 public class Server {
-    private static final int TIMEOUT = 10000;
+    private static final int TIMEOUT = 200;
     private static LamportClock lc;
     private static boolean sentRQT;
     private static int serverID;
@@ -205,6 +205,24 @@ public class Server {
 
                     }else if(tokens[0].equals("RLS")){  // this message should also change the store. sequence of messages ending with done
 
+                    }else if(tokens[0].equals("CHECK")){  // this message should also change the store. sequence of messages ending with done
+                        if(ack == serverMap.size()) {
+                            Socket doCS = clientQ.remove();
+                            PrintWriter getGoing = new PrintWriter(doCS.getOutputStream());
+                            Scanner theReturn = new Scanner(doCS.getInputStream());
+                            getGoing.println("go");
+                            getGoing.flush();
+                            while (theReturn.hasNextLine()) {
+                                String reply = theReturn.nextLine();
+                                if (reply.equals("cool")) {
+                                    sentRQT = false;
+                                    ack = 0;
+                                    topDog = null;
+                                    //do Release;
+                                    break;
+                                }
+                            }
+                        }
                     }else if(tokens[0].equals("server")){  // this message should also change the store. sequence of messages ending with done
                         int whichS = Integer.parseInt(tokens[1]) - 1;
                         String address = serversAddress.get(whichS);
@@ -322,7 +340,8 @@ public class Server {
                         PrintWriter mommawrite = new PrintWriter(momma.getOutputStream());
                         Scanner mommarec = new Scanner(momma.getInputStream());
                         String toSend = inStream.readLine();
-                        if(toSend.equals("ACK")){
+                        String[] tokens = toSend.split(" ");
+                        if(tokens[0].equals("ACK")){
                             //ackCheck = true;
                             serverCheck.replace(sId,false);
                         }
@@ -333,24 +352,23 @@ public class Server {
                 }
             }catch (SocketTimeoutException e) {
                 // Timeout, connect to new server and try again
-                /*
-                if(ackCheck){
-                    try {
-                        Socket momma = new Socket(iAd, port);
-                        PrintWriter mommawrite = new PrintWriter(momma.getOutputStream());
-                        Scanner mommarec = new Scanner(momma.getInputStream());
-                        String toSend = "REMOVE";
-                        mommawrite.println(toSend);
-                        mommawrite.flush();
-                        momma.close();
-                    } catch (IOException f) {
-                        System.out.println("ABORTING..." + f);
-                    }
-                }
-                */
                 serverCheck.remove(sId);
                 serverMap.remove(sId);
-                System.out.println("server " + sId + " disconnected");
+                System.out.println("server " + sId + " disconnected\n");
+                System.out.println("serverMap = " + Integer.toString(serverMap.size()) + "\n");
+                try {
+                    Socket momma = new Socket(iAd, port);
+                    PrintWriter mommawrite = new PrintWriter(momma.getOutputStream());
+                    Scanner mommarec = new Scanner(momma.getInputStream());
+                    String toSend = "CHECK";
+                    mommawrite.println(toSend);
+                    mommawrite.flush();
+                    momma.close();
+                } catch (IOException f) {
+                    System.out.println("ABORTING..." + f);
+                }
+
+
 
 
             } catch (IOException e) {

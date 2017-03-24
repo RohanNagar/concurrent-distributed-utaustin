@@ -20,6 +20,9 @@ public class Utilities {
           throw new SocketTimeoutException("Timeout occurred");
         }
       }
+    }catch (SocketTimeoutException e) {
+      // Timeout, connect to new server and try again
+      throw new SocketTimeoutException("Timeout occurred");
     } catch (IOException e) {
       System.out.println("A fatal error occurred.");
       System.exit(-1);

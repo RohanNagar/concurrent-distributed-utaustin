@@ -26,6 +26,7 @@ public class Server {
     private static volatile Map<String, Boolean> serverCheck;
     private static Queue<Timestamp> processLine;
     private static Queue<Socket> clientQ;
+    private static Map<Integer, Timestamp> currentRequests;
     private static Map<String, Socket> serverMap;
     public static void main (String[] args) {
 
@@ -69,7 +70,7 @@ public class Server {
             Comparator<Timestamp> toCompare = new StringLengthComparator();
             // Setup queue for processes
             processLine = new PriorityQueue<Timestamp>(11, toCompare);
-
+            currentRequests = new HashMap<>();
 
             //Setup queue for clients that will be handled
             clientQ = new LinkedList<Socket>();
@@ -195,6 +196,7 @@ public class Server {
                         Timestamp challenger = new Timestamp(chaClock, chaID);
                         lc.receiveAction(chaClock);
                         processLine.add(challenger);
+                        currentRequests.put(chaID, challenger);
                         //if(challenger.getLogicalClock() < topDog.getLogicalClock() || topDog == null){
                         Socket returnSock = serverMap.get(Integer.toString(challenger.getPid()));
                         PrintWriter sendAck = new PrintWriter(returnSock.getOutputStream());
@@ -209,9 +211,13 @@ public class Server {
 
                         int receivedTime = Integer.parseInt(split[1]);
                         lc.receiveAction(receivedTime);
+
+                        int receivedID = Integer.parseInt(split[2]);
+                        processLine.remove();
+
                         // Update store
-                        System.out.println("SENDING STORE STRING: " + split[2]);
-                        Store sentStore = Store.fromString(split[2]);
+                        System.out.println("SENDING STORE STRING: " + split[3]);
+                        Store sentStore = Store.fromString(split[3]);
                         store.updateStore(sentStore);
 
                         System.out.println("Done updating store.");
@@ -425,7 +431,7 @@ public class Server {
             try {
                 PrintWriter writer = new PrintWriter(socket.getOutputStream());
 
-                String toSend = "RLS ;" + time + ";" + store;
+                String toSend = "RLS ;" + time + ";" + serverID + ";" + store;
                 System.out.println("SENDING:\n" + toSend);
 
                 writer.println(toSend);
@@ -496,6 +502,12 @@ public class Server {
             TCPRelease release = new TCPRelease(next, time, store);
             release.run();
         }
+    }
+
+    private static synchronized void removePIDFromQueue(int pid) {
+        Timestamp timestamp = currentRequests.get(pid);
+        processLine.remove(timestamp);
+        currentRequests.remove(pid);
     }
 
     private static class StringLengthComparator implements Comparator<Timestamp> {

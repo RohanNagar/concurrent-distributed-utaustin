@@ -370,6 +370,7 @@ public class Server {
                 // Timeout, connect to new server and try again
                 serverCheck.remove(sId);
                 serverMap.remove(sId);
+                removePIDFromQueue(Integer.parseInt(sId));
                 System.out.println("server " + sId + " disconnected\n");
                 System.out.println("serverMap = " + Integer.toString(serverMap.size()) + "\n");
                 try {

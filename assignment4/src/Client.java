@@ -20,18 +20,21 @@ public class Client {
   public static void main(String[] args) {
     // Obtain number of servers to have available
     Scanner sc = new Scanner(System.in);
-    //int numServers = Integer.parseInt(sc.nextLine());
+
     if (args.length != 1) {
-      System.out.println("ERROR: Please provide a CFG file");
+      System.out.println("ERROR: Please provide a CFG file.");
       System.exit(-1);
     }
+
     try {
-      String thefile = args[0];
-      sc = new Scanner(new FileReader(thefile));
-    }catch(IOException e){
-      System.out.println("fuck you");
+      String file = args[0];
+      sc = new Scanner(new FileReader(file));
+    } catch (IOException e) {
+      System.out.println("Unable to read CFG file.");
     }
+
     int numServers = Integer.parseInt(sc.nextLine());
+
     // Populate server information
     for (int i = 0; i < numServers; i++) {
       String server = sc.nextLine();
@@ -47,6 +50,8 @@ public class Client {
         System.out.println("Ignoring server and continuing...");
       }
     }
+    sc.close();
+
     sc = new Scanner(System.in);
     try {
       connectToNewServer(false);
@@ -129,7 +134,7 @@ public class Client {
         // Timeout, connect to new server and try again
         connectToNewServer(true);
       } catch (IOException e) {
-        System.out.println("A fatal error occurred.");
+        System.out.println("A fatal error occurred #2.");
         System.exit(-1);
       }
     }

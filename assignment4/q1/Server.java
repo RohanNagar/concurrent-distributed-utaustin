@@ -29,39 +29,38 @@ public class Server {
     private static Map<Integer, Timestamp> currentRequests;
     private static Map<String, Socket> serverMap;
     public static void main (String[] args) {
+        Scanner sc = new Scanner(System.in);
 
-        if (args.length != 1) {
-            System.out.println("ERROR: Please provide a CFG file");
-            System.exit(-1);
-        }
-        Scanner sc;
-        Store store;
-        try {
-            String thefile = args[0];
-            sc = new Scanner(new FileReader(thefile));
-            int line_iter = 1;
-            String filename;
-            String config = sc.nextLine();
-            String[] tokens = config.split(" ");
-            serverID = Integer.parseInt(tokens[0]);
-            numServers = Integer.parseInt(tokens[1]);
-            filename = tokens[2];
-            serversAddress = new ArrayList<String>();
-            serversPort = new ArrayList<Integer>();
-            while(sc.hasNextLine()){
-                config = sc.nextLine();
-                tokens = config.split(":");
-                int portTrans = Integer.parseInt(tokens[1]);
-                String addTrans = tokens[0];
-                serversAddress.add(addTrans);
-                serversPort.add(portTrans);
-                if(line_iter == serverID){
-                    address = addTrans;
-                    port = portTrans;
-                }
-                line_iter++;
+        serverID = sc.nextInt();
+        numServers = sc.nextInt();
+        String filename = sc.next();
+
+        System.out.println("[DEBUG] my id: " + serverID);
+        System.out.println("[DEBUG] numServer: " + numServers);
+        System.out.println("[DEBUG] inventory path: " + filename);
+
+        int line_iter = 1;
+        serversAddress = new ArrayList<String>();
+        serversPort = new ArrayList<Integer>();
+        for (int i = 0; i < numServers; i++) {
+            // TODO: parse inputs to get the ips and ports of servers
+            String str = sc.next();
+            System.out.println("address for server " + i + ": " + str);
+
+            String[] tokens = str.split(":");
+            int portTrans = Integer.parseInt(tokens[1]);
+            String addTrans = tokens[0];
+            serversAddress.add(addTrans);
+            serversPort.add(portTrans);
+            if(line_iter == serverID){
+                address = addTrans;
+                port = portTrans;
             }
-            sc.close();
+            line_iter++;
+        }
+
+        Store store;
+
             // Set up store
             store = new Store(filename);
 
@@ -91,10 +90,6 @@ public class Server {
             // Start Threads
             TCPListener tcpListener = new TCPListener(port, store);
             tcpListener.start();
-        } catch (FileNotFoundException e) {
-            System.out.println("FATAL ERROR:CFG file not found");
-            System.exit(-1);
-        }
 
     }
 
@@ -130,10 +125,10 @@ public class Server {
                     harbringer.flush();
                     Thread sThread = new Thread(new serverStorage(nextSocket,Integer.toString(i+1)));
                     sThread.start();
-                    System.out.print("Server "+ Integer.toString(i+1) + " is up.\n");
+                    //System.out.print("Server "+ Integer.toString(i+1) + " is up.\n");
 
                 }catch (IOException e){
-                    System.out.print("Server "+ Integer.toString(i+1) + " not up yet.\n");
+                    //System.out.print("Server "+ Integer.toString(i+1) + " not up yet.\n");
                 }
             }
         }
@@ -155,7 +150,7 @@ public class Server {
                     String[] tokens = message.split(" ");
                     if(tokens[0].equals("ACK")){
                         ack++;
-                        System.out.println("Got acknowledgement\n");
+                        //System.out.println("Got acknowledgement\n");
                         int sClock = Integer.parseInt(tokens[1]);
                         lc.receiveAction(sClock);
                         if(ack == serverMap.size()){
@@ -178,7 +173,7 @@ public class Server {
                         }
                     }else if(tokens[0].equals("Client")){ // add to queue of clients that need to be serviced
                         clientQ.add(receiveSocket);
-                        System.out.println("Client connected\n");
+                        //System.out.println("Client connected\n");
                         //PrintWriter testme = new PrintWriter(receiveSocket.getOutputStream());
                         //testme.println("hey babe");
                         //testme.flush();
@@ -209,7 +204,7 @@ public class Server {
                             }
                         }
                     }else if(tokens[0].equals("RQT")){  // add server timestamp to queue
-                        System.out.println("got RQT\n");
+                        //System.out.println("got RQT\n");
                         int chaClock = Integer.parseInt(tokens[1]);
                         int chaID = Integer.parseInt(tokens[2]);
                         Timestamp challenger = new Timestamp(chaClock, chaID);
@@ -224,8 +219,8 @@ public class Server {
                         //}
 
                     }else if(tokens[0].equals("RLS")){  // this message should also change the store. sequence of messages ending with done
-                        System.out.println("Got RLS");
-                        System.out.println(message);
+                        //System.out.println("Got RLS");
+                        //System.out.println(message);
                         String[] split = message.split(";");
 
                         int receivedTime = Integer.parseInt(split[1]);
@@ -235,11 +230,11 @@ public class Server {
                         processLine.remove();
 
                         // Update store
-                        System.out.println("SENDING STORE STRING: " + split[3]);
+                        //System.out.println("SENDING STORE STRING: " + split[3]);
                         Store sentStore = Store.fromString(split[3]);
                         store.updateStore(sentStore);
 
-                        System.out.println("Done updating store.");
+                        //System.out.println("Done updating store.");
                     }else if(tokens[0].equals("CHECK")){  // this message should also change the store. sequence of messages ending with done
                         if(ack == serverMap.size()) {
                             Socket doCS = clientQ.remove();
@@ -266,7 +261,7 @@ public class Server {
                         //Socket nextSocket = new Socket(iaNew, popo);
                         serverMap.put(tokens[1], receiveSocket);
                         serverCheck.put(tokens[1], false);
-                        System.out.println("Server " + tokens[1] + " is now up\n");
+                        //System.out.println("Server " + tokens[1] + " is now up\n");
                         Thread sThread = new Thread(new serverStorage(receiveSocket, tokens[1]));
 
                         sThread.start();
@@ -276,7 +271,7 @@ public class Server {
                         clientID++;
                         newClient.start();
                         newClient.interrupt();
-                        System.out.println("Initial connection to a new client\n");
+                        //System.out.println("Initial connection to a new client\n");
                     }
 
                 } catch (IOException e) {
@@ -389,8 +384,8 @@ public class Server {
                 // Timeout, connect to new server and try again
                 serverCheck.remove(sId);
                 serverMap.remove(sId);
-                System.out.println("server " + sId + " disconnected\n");
-                System.out.println("serverMap = " + Integer.toString(serverMap.size()) + "\n");
+                //System.out.println("server " + sId + " disconnected\n");
+                //System.out.println("serverMap = " + Integer.toString(serverMap.size()) + "\n");
                 try {
                     Socket momma = new Socket(iAd, port);
                     PrintWriter mommawrite = new PrintWriter(momma.getOutputStream());
@@ -451,7 +446,7 @@ public class Server {
                 PrintWriter writer = new PrintWriter(socket.getOutputStream());
 
                 String toSend = "RLS ;" + time + ";" + serverID + ";" + store;
-                System.out.println("SENDING:\n" + toSend);
+                //System.out.println("SENDING:\n" + toSend);
 
                 writer.println(toSend);
                 writer.flush();

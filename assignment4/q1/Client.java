@@ -21,18 +21,6 @@ public class Client {
     // Obtain number of servers to have available
     Scanner sc = new Scanner(System.in);
 
-    if (args.length != 1) {
-      System.out.println("ERROR: Please provide a CFG file.");
-      System.exit(-1);
-    }
-
-    try {
-      String file = args[0];
-      sc = new Scanner(new FileReader(file));
-    } catch (IOException e) {
-      System.out.println("Unable to read CFG file.");
-    }
-
     int numServers = Integer.parseInt(sc.nextLine());
 
     // Populate server information
@@ -50,9 +38,7 @@ public class Client {
         System.out.println("Ignoring server and continuing...");
       }
     }
-    sc.close();
 
-    sc = new Scanner(System.in);
     try {
       connectToNewServer(false);
 
@@ -132,7 +118,7 @@ public class Client {
         }
       } catch (SocketTimeoutException e) {
         // Timeout, connect to new server and try again
-        System.out.println("TIMEOUT.");
+        //System.out.println("TIMEOUT.");
         connectToNewServer(true);
       } catch (IOException e) {
         System.out.println("A fatal error occurred #2.");
@@ -171,7 +157,7 @@ public class Client {
         currentServerNumber = i;
         return;
       } catch (IOException e) {
-        System.out.println("Server " + information + " is unavailable.");
+        //System.out.println("Server " + information + " is unavailable.");
       }
     }
 

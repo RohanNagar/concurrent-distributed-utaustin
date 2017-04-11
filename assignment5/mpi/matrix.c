@@ -75,7 +75,7 @@ void calculate_single_process() {
             exit(-1);
         }
 
-        char line[255];
+        char line[2048];
         char* token;
         int index = 0;
 

@@ -67,6 +67,124 @@ int row_to_process(int i, int rows, int size) {
     return process + 1; 
 }
 
+void calculate_single_process() {
+        // Open matrix file
+        FILE *fp;
+        if((fp = fopen(MATRIX_FILE, "r")) == 0) {
+            printf("%s cannot be found\n", MATRIX_FILE);
+            exit(-1);
+        }
+
+        char line[255];
+        char* token;
+        int index = 0;
+
+        // Read number of rows in matrix
+        fgets(line, sizeof(line), fp);
+        char* first = strtok(line, " ");
+        int numRows = atoi(first);
+
+        // Create empty matrix
+        vector* matrix[numRows];
+
+        // Read in matrix
+        while (fgets(line, sizeof(line), fp) != NULL) {
+            vector *a = (vector*) malloc(sizeof(vector));
+            int_vector_init(a);
+
+            token = strtok(line, " ");
+            while (token != NULL) {
+                int num = atoi(token);
+                int_vector_add(a, num);
+
+                token = strtok(NULL, " ");
+            }
+
+            matrix[index] = a;
+            index++;
+        }
+
+        // Print matrix
+        if (DEBUG) {
+            printf("Built Matrix:\n");
+            print_matrix(numRows, matrix);
+            printf("\n");
+        }
+
+        fclose(fp);
+
+        // Open vector file
+        if((fp = fopen(VECTOR_FILE, "r")) == 0) {
+            printf("%s cannot be found\n", VECTOR_FILE);
+            exit(-1);
+        }
+
+        // Create empty vector
+        vector *vec = (vector*) malloc(sizeof(vector));
+        int_vector_init(vec);
+
+        // Read vector
+        while (fgets(line, sizeof(line), fp) != NULL) {
+            token = strtok(line, " ");
+            while (token != NULL) {
+                int num = atoi(token);
+                int_vector_add(vec, num);
+
+                token = strtok(NULL, " ");
+            }
+        }
+
+        // Print vector
+        if (DEBUG) {
+            printf("Build Vector:\n");
+            print_vector(vec);
+            printf("\n");
+        }
+
+        fclose(fp);
+
+        // Define result vector
+        int result[numRows];
+        
+        // Calculate
+        int i;
+        for (i = 0; i < numRows; i++) {
+            vector* row = matrix[i];
+            int sum = 0;
+            int j;
+            for (j = 0; j < vec->size; j++) {
+                sum += (row->elements[j] * vec->elements[j]);
+            }
+
+            result[i] = sum;
+        }
+
+
+        if (DEBUG) {
+            printf("[Master] Received result: ");
+            for (i = 0; i < numRows; i++) {
+                printf("%d ", result[i]);
+            }
+            printf("\n");
+        }
+
+        // Write result to file
+        FILE *outFp = fopen(OUTFILE, "w");
+        if (outFp == NULL) {
+            printf("Can't open file %s to write\n", OUTFILE);
+        }
+
+        for (i = 0; i < numRows; i++) {
+            if (i == numRows - 1) {
+                fprintf(outFp, "%d", result[i]);
+            } else {
+                fprintf(outFp, "%d ", result[i]);
+            }
+        }
+
+        fclose(outFp);
+}
+
 int main(int argc, char** argv) {
     // Initialize the MPI environment
     MPI_Init(NULL, NULL);
@@ -78,6 +196,12 @@ int main(int argc, char** argv) {
     // Get the rank of the process
     int world_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+    // Special case for 1 process
+    if (world_size == 1) {
+        calculate_single_process();
+        return;
+    }
 
     if (world_rank == 0) {
         // Open matrix file

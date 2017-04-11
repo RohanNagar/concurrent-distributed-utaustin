@@ -5,6 +5,7 @@
 
 # IntelliJ Files
 .idea/
+out/
 *.ipr
 *.iws
 *.iml

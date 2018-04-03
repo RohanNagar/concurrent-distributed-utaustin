@@ -1,4 +1,4 @@
-# Parallel Sort
+# Parallel Search
 
 Performs a search for an integer in an array in parallel.
 
